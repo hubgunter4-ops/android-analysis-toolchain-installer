@@ -1,0 +1,14 @@
+.venv/
+__pycache__/
+*.py[cod]
+.env
+*.apk
+*.aab
+*.dex
+*.jar
+*.pcap
+*.pcapng
+*.log
+security-tools/
+work/
+certs/
