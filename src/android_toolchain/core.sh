@@ -176,7 +176,7 @@ install_base() {
     log "[1/6] Dependencias base"
     (( SKIP_APT )) && { log "apt omitido por --skip-apt"; return; }
     sudo_run apt-get update
-    sudo_run apt-get install -y build-essential git curl wget unzip python3 python3-pip python3-venv default-jdk
+    sudo_run apt-get install -y build-essential git curl wget unzip python3 python3-pip default-jdk
 }
 
 install_adb() {
@@ -231,16 +231,12 @@ clone_once() {
 }
 
 python_tools() {
-    local venv="$TOOLS_DIR/venv"
     if (( DRY_RUN )); then
-        run python3 -m venv "$venv"
-        run "$venv/bin/python" -m pip install --upgrade androguard quark-engine apkid frida-tools objection mitmproxy
+        run python3 -m pip install --user --upgrade androguard quark-engine apkid frida-tools objection mitmproxy
     else
-        python3 -m venv "$venv"
-        "$venv/bin/python" -m pip install --upgrade pip
-        "$venv/bin/python" -m pip install --upgrade androguard quark-engine apkid frida-tools objection mitmproxy
+        python3 -m pip install --user --upgrade androguard quark-engine apkid frida-tools objection mitmproxy
     fi
-    log "Entorno Python: $venv"
+    log "Herramientas Python instaladas para el usuario actual; usa $HOME/.local/bin en PATH"
 }
 
 install_static() {
@@ -262,7 +258,7 @@ install_traffic() {
     local user_name="${SUDO_USER:-${USER:-$(id -un)}}"
     if (( ! DRY_RUN )); then sudo_run usermod -aG wireshark "$user_name" || log "no se pudo añadir $user_name al grupo wireshark"; fi
     python_tools
-    log "mitmproxy queda disponible en $TOOLS_DIR/venv/bin/mitmproxy"
+    log "mitmproxy queda disponible normalmente en $HOME/.local/bin/mitmproxy"
 }
 
 summary() {
@@ -273,7 +269,7 @@ summary() {
 
  ESTÁTICO: apktool, jadx, dex2jar, androguard, quark-engine, apkid, MobSF
  DINÁMICO: adb, frida-tools, objection, mitmproxy, wireshark, tcpdump
- Python venv: $TOOLS_DIR/venv
+ Python user scripts: $HOME/.local/bin
  Manuales/clones: $TOOLS_DIR
 ==================================================================
 EOF

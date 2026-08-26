@@ -20,7 +20,7 @@ El flujo recomendado es ejecutar `--guided` o `--interactive`, elegir `--static-
 
 ## Pasos de instalación
 
-Requisitos: Ubuntu, Bash, `sudo` para APT, Python/venv, Java y conectividad HTTPS. Las fases dinámicas requieren ADB, emulador/dispositivo de laboratorio, Frida/objection y permisos de depuración; la fase de tráfico requiere Wireshark/tcpdump/mitmproxy. Instalación mediante el script reparado:
+Requisitos: Ubuntu, Bash, `sudo` para APT, Python 3, Java y conectividad HTTPS. Las fases dinámicas requieren ADB, emulador/dispositivo de laboratorio, Frida/objection y permisos de depuración; la fase de tráfico requiere Wireshark/tcpdump/mitmproxy. El bootstrap instala las herramientas Python para el usuario actual y no crea ni activa `.venv`:
 ```bash
 ./install.sh --help
 ./install.sh --guided
@@ -28,6 +28,6 @@ Requisitos: Ubuntu, Bash, `sudo` para APT, Python/venv, Java y conectividad HTTP
 # después de revisar el plan
 sudo -E ./install.sh --static-only
 ```
-`--tools-dir` cambia la raíz de instalación y `JADX_SHA256` fija el checksum esperado. APT, JADX, MobSF, Frida y ADB se preparan solo según la política de la estación.
+`--tools-dir` cambia la raíz de instalación y `JADX_SHA256` fija el checksum esperado. APT, JADX, MobSF, Frida y ADB se preparan solo según la política de la estación. Si una herramienta Python queda en `$HOME/.local/bin`, añade esa ruta al `PATH`.
 
 Punto de entrada principal: `./src/no4nn.sh`. Revisa siempre `--help` y la autorización vigente antes de elegir una operación activa.
