@@ -20,14 +20,13 @@ El flujo recomendado es ejecutar `--guided` o `--interactive`, elegir `--static-
 
 ## Pasos de instalación
 
-Requisitos: Ubuntu, Bash, `sudo` para APT, Python/venv, Java y conectividad HTTPS. Las fases dinámicas requieren ADB, emulador/dispositivo de laboratorio, Frida/objection y permisos de depuración; la fase de tráfico requiere Wireshark/tcpdump/mitmproxy. Instalación:
+Requisitos: Ubuntu, Bash, `sudo` para APT, Python/venv, Java y conectividad HTTPS. Las fases dinámicas requieren ADB, emulador/dispositivo de laboratorio, Frida/objection y permisos de depuración; la fase de tráfico requiere Wireshark/tcpdump/mitmproxy. Instalación mediante el script reparado:
 ```bash
-chmod +x src/no4nn.sh
-./src/no4nn.sh --help
-./src/no4nn.sh --guided
-./src/no4nn.sh --dry-run --static-only --plan-json
+./install.sh --help
+./install.sh --guided
+./install.sh --dry-run --static-only --plan-json
 # después de revisar el plan
-sudo -E ./src/no4nn.sh --static-only
+sudo -E ./install.sh --static-only
 ```
 `--tools-dir` cambia la raíz de instalación y `JADX_SHA256` fija el checksum esperado. APT, JADX, MobSF, Frida y ADB se preparan solo según la política de la estación.
 
