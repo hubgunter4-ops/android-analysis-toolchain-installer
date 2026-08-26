@@ -9,6 +9,8 @@ IFS=$'\n\t'
 VERSION="2.1.0"
 TOOLS_DIR="${TOOLS_DIR:-$HOME/security-tools}"
 DRY_RUN=0
+INTERACTIVE=0
+GUIDED=0
 STATIC_ONLY=0
 DYNAMIC_ONLY=0
 SKIP_APT=0
@@ -59,6 +61,8 @@ Uso: no4nn.sh [opciones]
   --dynamic-only         Ejecuta solo ADB, instrumentación y tráfico.
   --skip-apt             No ejecuta apt; útil en imágenes ya provisionadas.
   --banner-style 0|1|2   Selecciona la variante del banner.
+  --interactive          Selector guiado de fase y modo.
+  --guided               Explica el flujo y termina sin cambios.
   -h, --help             Muestra esta ayuda.
 
 Variables:
@@ -108,6 +112,35 @@ validate_path() {
 }
 
 validate_style() { [[ "$BANNER_STYLE" =~ ^[0-2]$ ]] || fail "banner debe ser 0, 1 o 2"; }
+
+guided_flow() {
+    cat <<'EOF'
+Flujo ANDROID ANALYSIS: scope -> base/ADB -> APK tools -> static -> dynamic/Frida -> traffic -> summary.
+[1] static-only: reversing y análisis estático; [2] dynamic-only: ADB/instrumentación; [3] all: cadena completa.
+El modo guiado no instala nada. El modo interactivo pregunta si debe permanecer en dry-run antes de ejecutar.
+EOF
+}
+
+interactive_select() {
+    [[ -t 0 ]] || fail "--interactive requiere una terminal interactiva"
+    guided_flow
+    read -r -p "Selecciona [1] static [2] dynamic [3] all [q] cancelar: " choice
+    case "$choice" in
+        1) STATIC_ONLY=1; DYNAMIC_ONLY=0 ;;
+        2) STATIC_ONLY=0; DYNAMIC_ONLY=1 ;;
+        3) STATIC_ONLY=0; DYNAMIC_ONLY=0 ;;
+        *) fail "operación cancelada por el operador" ;;
+    esac
+    read -r -p "¿Ejecutar instalación real? [s/N]: " execute
+    case "${execute,,}" in
+        s|si|sí|y|yes) DRY_RUN=0 ;;
+        *) DRY_RUN=1 ;;
+    esac
+}
+
+flow_transition() {
+    log "[FLOW] scope -> validate -> $1 -> execute -> summary"
+}
 
 validate_checksum() {
     [[ -z "${JADX_SHA256:-}" || "$JADX_SHA256" =~ ^[A-Fa-f0-9]{64}$ ]] || fail "JADX_SHA256 debe ser SHA-256 hexadecimal de 64 caracteres"
@@ -256,6 +289,8 @@ android_toolchain_main() {
             --dynamic-only) DYNAMIC_ONLY=1; shift ;;
             --skip-apt) SKIP_APT=1; shift ;;
             --banner-style) (($# >= 2)) || fail "--banner-style requiere 0, 1 o 2"; BANNER_STYLE="$2"; shift 2 ;;
+            --interactive) INTERACTIVE=1; shift ;;
+            --guided) GUIDED=1; shift ;;
             -h|--help) usage; return 0 ;;
             *) fail "opción desconocida: $1" ;;
         esac
@@ -266,17 +301,28 @@ android_toolchain_main() {
     validate_checksum
     validate_path "$TOOLS_DIR"
     if [[ "$TOOLS_DIR" != /* ]]; then TOOLS_DIR="$PWD/$TOOLS_DIR"; fi
+    if (( GUIDED )); then
+        banner
+        guided_flow
+        return 0
+    fi
+    if (( INTERACTIVE )); then
+        interactive_select
+        (( STATIC_ONLY && DYNAMIC_ONLY )) && fail "selección de fases incompatible"
+    fi
     if (( PLAN_JSON )); then plan_json; return 0; fi
     if (( ! DRY_RUN )); then mkdir -p "$TOOLS_DIR"; fi
 
     banner
     if (( DYNAMIC_ONLY == 0 )); then
+        flow_transition "base-adb-static"
         install_base
         install_adb
         install_apk_tools
         install_static
     fi
     if (( STATIC_ONLY == 0 )); then
+        flow_transition "dynamic-traffic"
         (( DYNAMIC_ONLY )) && { install_base; install_adb; }
         install_dynamic
         install_traffic

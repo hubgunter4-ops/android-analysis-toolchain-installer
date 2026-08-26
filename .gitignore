@@ -15,3 +15,11 @@ security-tools/
 work/
 certs/
 *.sha256
+evidence/
+screenshots/
+pruebas/
+artifacts/
+results/
+*.cap
+*.key
+*.pem
