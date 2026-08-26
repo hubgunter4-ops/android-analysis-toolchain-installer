@@ -1,143 +1,153 @@
-# ANDROID ANALYSIS — Reversing, Instrumentation & Traffic Toolchain
+# ANDROID ANALYSIS — Toolchain de reversing e instrumentación
 
 ![ANDROID ANALYSIS banner](assets/banner.png)
 
 ![ANDROID ANALYSIS cover](assets/cover.png)
 
-![Estado](https://img.shields.io/badge/estado-mobile%20red%20team%20autorizado-6f42c1)
-![Shell](https://img.shields.io/badge/shell-Bash-4eaa25)
-![Plataforma](https://img.shields.io/badge/plataforma-Ubuntu-111827)
+ANDROID ANALYSIS es un **instalador Bash modular** para preparar una estación de análisis Android: ADB/Fastboot, Apktool, JADX, dex2jar, Androguard, Quark Engine, APKiD, MobSF, Frida, objection, Wireshark, tcpdump y mitmproxy. Conserva las seis fases del instalador original y mantiene capacidades ofensivas de reversing, instrumentación y análisis de tráfico para laboratorios autorizados.
 
-`no4nn.sh` conserva el instalador recibido para una estación Ubuntu dedicada a análisis Android: ADB/Fastboot, Apktool, JADX, dex2jar, Androguard, Quark Engine, APKiD, MobSF, Frida, objection, Wireshark, tcpdump y mitmproxy. El objetivo es preparar una estación para reversing, análisis estático y análisis dinámico de APKs dentro de un engagement autorizado.
+> **Uso autorizado únicamente.** El instalador provisiona capacidades; no autoriza por sí mismo el análisis de una APK, la conexión a un dispositivo ni la captura de tráfico. Usa solo aplicaciones, emuladores, dispositivos y redes incluidos en una autorización escrita.
 
-> **El instalador no conecta ni modifica dispositivos Android automáticamente.** Las fases de instrumentación, proxy y captura pueden manejar datos sensibles; utiliza únicamente APKs, emuladores, dispositivos y redes incluidos en la autorización escrita.
+## Arquitectura
 
-## Mejoras incorporadas
+```text
+src/no4nn.sh                    # entrypoint: resuelve raíz y carga el núcleo
+src/android_toolchain/core.sh   # validación, banners, plan y seis fases
+archive/original/no4nn.sh.original
+```
 
-La versión reforzada conserva las seis fases del original y añade `set -Eeuo pipefail`, funciones idempotentes, `--dry-run`, selección `--static-only`/`--dynamic-only`, `--skip-apt`, directorio configurable, venv Python, validación de rutas y arquitectura, descargas HTTPS con `curl --fail`, verificación SHA-256 opcional para JADX, clones controlados y detección explícita de dispositivos ADB sin conexión automática.
+El entrypoint no depende del directorio de trabajo. El core concentra las funciones de instalación y puede auditarse con `bash -n` antes de ejecutar. La idempotencia se aplica a clones Git controlados y a directorios JADX existentes; las herramientas de terceros no ejecutan `setup.sh` o `run.sh` automáticamente.
 
-El banner integrado cuenta con tres variantes y se selecciona con `--banner-style 0|1|2`, `BANNER_STYLE=0|1|2` o aleatoriamente cuando no se fija un estilo. La aleatorización es visual y no modifica el plan de instalación.
+## Requisitos e instalación
 
-| Mejora | Resultado |
-|---|---|
-| Idempotencia | No vuelve a clonar directorios que ya tienen `.git`. |
-| Entorno Python | Usa `$TOOLS_DIR/venv` en lugar de `pip` global del usuario. |
-| Cadena de suministro | Restringe URLs a HTTPS esperadas y soporta `JADX_SHA256`. |
-| Fases | Permite preparar solo estático o dinámico sin mezclar ambos. |
-| ADB | Ejecuta solo `adb devices` para inventario; no hace `adb connect`. |
-| Privilegios | Centraliza apt/usermod mediante `sudo_run`. |
-| Repetibilidad | Acepta `--tools-dir`, estilo de banner y dry-run. |
-
-## Requisitos
-
-Se necesita Ubuntu 22.04/24.04 o compatible, conexión de red para descargar dependencias, `sudo` para paquetes del sistema y un directorio de instalación con espacio suficiente. El análisis dinámico requiere un emulador o dispositivo de laboratorio con Depuración USB autorizada. No se requiere conectar un dispositivo para instalar la estación.
-
-## Instalación
-
-Clona el repositorio y revisa primero el plan:
+Para la instalación real se requiere Ubuntu compatible, acceso de red, `sudo` para paquetes del sistema y espacio suficiente en `TOOLS_DIR`. Las fases de análisis dinámico requieren además un emulador o dispositivo Android de laboratorio con Depuración USB habilitada dentro del alcance autorizado. Sin dispositivo se pueden instalar las herramientas, pero no comprobar adjunción, instrumentación o tráfico.
 
 ```bash
-git clone <URL_DEL_REPOSITORIO>
+git clone https://github.com/hubgunter4-ops/android-analysis-toolchain-installer.git
 cd android-analysis-toolchain-installer
-chmod +x src/no4nn.sh
-bash -n src/no4nn.sh
-./src/no4nn.sh --dry-run --static-only --tools-dir "$HOME/security-tools"
+chmod +x src/no4nn.sh src/android_toolchain/core.sh
+bash -n src/no4nn.sh src/android_toolchain/core.sh
+```
+
+Antes de provisionar, genera un plan legible:
+
+```bash
+./src/no4nn.sh --dry-run --static-only \
+  --tools-dir "$HOME/security-tools" --banner-style 0
+```
+
+Para automatización, el plan se puede consumir como JSON y no ejecuta ninguna fase:
+
+```bash
+./src/no4nn.sh --plan-json --static-only \
+  --tools-dir "$HOME/security-tools"
 ```
 
 Instalación completa en una estación dedicada:
 
 ```bash
 sudo -E ./src/no4nn.sh \
-  --tools-dir "$HOME/security-tools" \
-  --banner-style 1
+  --tools-dir "$HOME/security-tools" --banner-style 1
 ```
 
 Solo reversing y análisis estático:
 
 ```bash
-sudo -E ./src/no4nn.sh --static-only --tools-dir "$HOME/security-tools"
+sudo -E ./src/no4nn.sh --static-only \
+  --tools-dir "$HOME/security-tools"
 ```
 
-Solo instrumentación, tráfico y ADB:
+Solo ADB, instrumentación y tráfico:
 
 ```bash
-sudo -E ./src/no4nn.sh --dynamic-only --tools-dir "$HOME/security-tools"
+sudo -E ./src/no4nn.sh --dynamic-only \
+  --tools-dir "$HOME/security-tools"
 ```
 
-En una imagen que ya tiene paquetes base, puedes omitir apt:
+En una imagen que ya dispone de paquetes base, `--skip-apt` evita `apt-get`; no evita descargas, creación del venv o clones que correspondan a las fases seleccionadas.
+
+## Opciones y controles
+
+| Opción | Comportamiento |
+|---|---|
+| `--tools-dir PATH` | Directorio absoluto o relativo seguro para venv, JADX, dex2jar y MobSF. |
+| `--dry-run` | Muestra comandos planificados sin ejecutar APT, pip, clones, descargas, ADB ni cambios de grupo. |
+| `--plan-json` | Emite un plan JSON parseable y termina sin cambiar el host. |
+| `--static-only` | Ejecuta base, ADB, APK tools y análisis estático; excluye instrumentación y tráfico. |
+| `--dynamic-only` | Ejecuta base, ADB, instrumentación y tráfico; excluye APK tools y MobSF. |
+| `--skip-apt` | Omite paquetes del sistema, útil en imágenes preconfiguradas. |
+| `--banner-style 0\|1\|2` | Fija una de tres variantes visuales; sin valor se aleatoriza. |
+
+`--static-only` y `--dynamic-only` son excluyentes. Las rutas aceptan una allowlist conservadora de caracteres y rechazan controles, separadores de comandos y traversal evidente. `JADX_SHA256`, si se define, debe ser un SHA-256 hexadecimal de 64 caracteres.
+
+## Seis fases conservadas
+
+| Fase | Componentes | Efecto real |
+|---:|---|---|
+| 1 | build-essential, Git, curl, wget, unzip, Python, venv y JDK | Instala dependencias base mediante `sudo_run`. |
+| 2 | ADB y Fastboot | Instala paquetes y, fuera de dry-run, ejecuta solo `adb devices`; no hace `adb connect`. |
+| 3 | Apktool, JADX y dex2jar | Descarga JADX por HTTPS desde la release esperada y clona dex2jar con profundidad 1. |
+| 4 | Androguard, Quark Engine, APKiD y MobSF | Crea o actualiza `$TOOLS_DIR/venv` y clona MobSF; no inicia MobSF automáticamente. |
+| 5 | Frida-tools y objection | Prepara instrumentación para una app autorizada; no adjunta procesos por sí sola. |
+| 6 | Wireshark, tcpdump y mitmproxy | Instala captura y proxy; el usuario debe seleccionar interfaz, APK, dispositivo y CA conforme al alcance. |
+
+## Cadena de suministro e idempotencia
+
+JADX se obtiene desde la API de releases de su proyecto oficial y solo se acepta una URL `https://github.com/...` con el sufijo esperado. Para una verificación criptográfica, proporciona el hash desde un canal independiente:
 
 ```bash
-./src/no4nn.sh --skip-apt --static-only --tools-dir "$HOME/security-tools"
-```
-
-## Verificación de descargas
-
-La descarga de JADX utiliza la release latest del repositorio oficial por HTTPS y exige una URL `https://github.com/...` antes de extraerla. Para elevar la garantía de integridad, proporciona el SHA-256 obtenido por un canal de confianza:
-
-```bash
-export JADX_SHA256='<sha256-verificado-del-zip-de-jadx>'
+export JADX_SHA256='<sha256-verificado-del-zip>'
 sudo -E ./src/no4nn.sh --static-only
 ```
 
-Si no se define `JADX_SHA256`, el script conserva la validación TLS y del origen esperado, pero muestra un aviso de que no se realizó verificación criptográfica del archivo. Los clones usan profundidad 1 y no se ejecuta ningún `setup.sh` o `run.sh` de terceros de forma automática.
+Sin `JADX_SHA256`, se conserva TLS y la comprobación del origen esperado, pero el script informa que no hubo validación criptográfica del archivo. Los clones no sobrescriben destinos no vacíos que no contengan `.git`; los venv se reutilizan en ejecuciones posteriores. Revisa lockfiles, hashes y licencias de dependencias antes de promover la estación.
 
-## Fases conservadas
+## Operación Android autorizada
 
-| Fase | Componentes | Nota operativa |
-|---:|---|---|
-| 1 | build-essential, git, curl, wget, unzip, Python, JDK | Preparación del host. |
-| 2 | ADB y Fastboot | Solo inventario local mediante `adb devices`. |
-| 3 | Apktool, JADX, dex2jar | Reversing y desempaquetado de APK. |
-| 4 | Androguard, Quark Engine, APKiD, MobSF | Análisis estático y scoring. |
-| 5 | Frida-tools y objection | Instrumentación dinámica autorizada. |
-| 6 | Wireshark, tcpdump, mitmproxy | Captura y análisis de tráfico del laboratorio. |
+Después de instalar, el operador debe registrar APK y SHA-256, versión de Android, modelo/emulador, estado de root o debug, versión de Frida/objection, interfaz de captura, CA instalada y ventana de autorización. ADB, Frida y mitmproxy pueden acceder a datos sensibles; almacena resultados con permisos restringidos y elimina artefactos fuera del periodo de retención.
 
-## TTPs y perspectiva purple team
+El instalador no verifica la validez funcional de una APK ni puede afirmar que una app es vulnerable solo porque una herramienta se haya instalado. La evidencia dinámica debe incluir el comando utilizado, el identificador del dispositivo, el proceso objetivo, el momento y los artefactos generados.
 
-| TTP | Uso ofensivo del toolchain | Control defensivo a validar |
+## TTPs y perspectiva ofensiva
+
+| TTP | Capacidad ofensiva autorizada | Control a validar |
 |---|---|---|
-| Static Discovery | Inspección de permisos, componentes, firmas y strings APK | Mobile app security review, SBOM y pipeline de firma. |
-| Dynamic Analysis | Frida/objection para observar llamadas y comportamiento | Anti-tampering, detección de instrumentación y telemetría móvil. |
-| Network Sniffing | tcpdump/Wireshark/mitmproxy sobre dispositivo de laboratorio | TLS pinning, proxy policy, EDR/NDR y detección de CA no confiable. |
-| Tool Transfer | Descarga de releases y clones para provisionar estación | Allowlist de repositorios, checksum y revisión de dependencias. |
+| Static Discovery | Permisos, componentes, strings, firmas y recursos de APK | SAST móvil, SBOM y pipeline de firma. |
+| Dynamic Analysis | Frida/objection para observar llamadas y comportamiento en runtime | Anti-tampering, detección de instrumentación y telemetría. |
+| Network Sniffing | tcpdump/Wireshark/mitmproxy en red de laboratorio | TLS pinning, política de proxy y detección de CA no confiable. |
+| Tool Transfer | Descarga de releases y clones para provisionar la estación | Allowlist, checksum, revisión de dependencias y provenance. |
 
-La instalación prepara capacidades; no implica que una APK sea maliciosa ni que una observación dinámica sea concluyente. Conserva el APK, el hash, la versión del toolchain y la autorización junto con cada expediente.
-
-## Pruebas y evidencia visual
-
-Las pruebas versionadas verifican sintaxis Bash, ayuda, modos dry-run, banners y exclusión de fases incompatibles. No ejecutan apt, clones, pip, ADB, Frida, proxy ni captura real.
+## Pruebas locales y límites de validación
 
 ```bash
 bash tests/test_installer.sh
+bash -n src/no4nn.sh src/android_toolchain/core.sh
+./src/no4nn.sh --plan-json --dynamic-only --tools-dir /tmp/android-toolchain-plan
+```
+
+La suite verifica sintaxis, ayuda, banners, dry-run de fases estáticas/dinámicas, JSON parseable, exclusión de modos, checksum inválido y rechazo de rutas peligrosas. No ejecuta `apt`, `pip`, clones, descargas, `adb`, Frida, objection, Wireshark, tcpdump ni mitmproxy. Por tanto, en este entorno no se validaron hardware Android, ADB, instrumentación ni captura real.
+
+## Evidencia visual
+
+`assets/` contiene banner y cover del repositorio. `evidence/` conserva las variantes visuales generadas para planes dry-run; la aleatorización afecta únicamente presentación. Regenera las capturas mediante:
+
+```bash
 python3 tools/render_evidence.py
 ```
 
-| Archivo | Contenido |
-|---|---|
-| `evidence/01-banner-variant-0.png` | Plan estático y banner variante 0. |
-| `evidence/02-banner-variant-1.png` | Plan dinámico y banner variante 1. |
-| `evidence/03-banner-variant-2.png` | Plan completo y banner variante 2. |
+Las capturas no deben presentarse como prueba de que se instaló un toolchain en un host externo ni de que se conectó un dispositivo.
 
 ## Estructura
 
 ```text
 .
-├── assets/
-│   ├── banner.png
-│   ├── cover.png
-│   └── visual-review.md
-├── docs/
-│   ├── authorization.md
-│   ├── supply-chain.md
-│   └── operator-checklist.md
+├── archive/original/no4nn.sh.original
+├── assets/{banner.png,cover.png,visual-review.md}
+├── docs/{authorization.md,supply-chain.md,operator-checklist.md}
 ├── evidence/
-│   ├── 01-banner-variant-0.png
-│   ├── 02-banner-variant-1.png
-│   ├── 03-banner-variant-2.png
-│   └── visual-review.md
 ├── src/
 │   ├── no4nn.sh
-│   └── no4nn.sh.original
+│   └── android_toolchain/core.sh
 ├── tests/test_installer.sh
 ├── tools/render_evidence.py
 └── README.md
