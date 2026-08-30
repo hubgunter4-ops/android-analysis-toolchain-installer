@@ -31,3 +31,31 @@ sudo -E ./install.sh --static-only
 `--tools-dir` cambia la raíz de instalación y `JADX_SHA256` fija el checksum esperado. APT, JADX, MobSF, Frida y ADB se preparan solo según la política de la estación. Si una herramienta Python queda en `$HOME/.local/bin`, añade esa ruta al `PATH`.
 
 Punto de entrada principal: `./src/no4nn.sh`. Revisa siempre `--help` y la autorización vigente antes de elegir una operación activa.
+
+## Guía de ejecución
+
+### 1. Preflight
+
+Ejecuta primero la ayuda y el plan sin cambios:
+
+```bash
+./install.sh --help
+./install.sh --guided
+./install.sh --dry-run --static-only --plan-json
+```
+
+El modo `--guided` explica el flujo y termina. `--dry-run` genera el plan sin modificar el host ni descargar herramientas; `--plan-json` permite conservarlo como evidencia local.
+
+### 2. Instalación por alcance
+
+Para análisis estático:
+
+```bash
+sudo -E ./install.sh --static-only
+```
+
+Para fases dinámicas usa `--dynamic-only` únicamente en una estación autorizada con ADB, emulador o dispositivo de laboratorio, Frida/objection y las herramientas de captura aprobadas. `--skip-apt` evita usar APT en una imagen ya preparada y `--tools-dir PATH` fija el directorio de instalación.
+
+### 3. Verificación y cleanup
+
+Comprueba las versiones, revisa el checksum de JADX mediante `JADX_SHA256`, documenta el dispositivo o emulador utilizado y elimina artefactos temporales al terminar. El instalador no conecta automáticamente dispositivos ni ejecuta aplicaciones objetivo. La licencia MIT y la autorización escrita del laboratorio siguen siendo obligatorias.
